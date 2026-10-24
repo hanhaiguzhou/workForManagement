@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}登录 · 课表排班{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <h1>登录</h1>
+    <p class="sub">勤工助学值班排班</p>
+    {% if error %}<div class="alert">{{ error }}</div>{% endif %}
+    <form method="post" action="/login">
+      <label>学号<input name="student_no" value="{{ student_no or '' }}" required autofocus></label>
+      <label>教务密码<input name="password" type="password" required></label>
+      <p class="hint">
+        用教务系统的账号密码登录，密码只用于这一次验证，系统不保存。
+        第一次登录会自动创建账号，登录后选一个管理员申请加入即可。
+      </p>
+      <button type="submit">登录</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

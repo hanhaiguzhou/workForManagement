@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}我的课表 · 第{{ week }}周{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<h1>我的课表 · 第 {{ week }} 周</h1>
+<p class="hint">{{ current_user.name or current_user.student_no }} · {{ semester }} · 这里只显示你自己的课表</p>
+{% if message %}<div class="notice">{{ message }}</div>{% endif %}
+{% if notice %}<div class="alert">课表解析告警：{{ notice }}（可能有课没被认出来，请核对后重新解析）</div>{% endif %}
+
+<div class="weekbar">
+  {% if week > 1 %}<a href="/me?week={{ week - 1 }}">← 上一周</a>{% else %}<span class="disabled">← 上一周</span>{% endif %}
+  <strong>第 {{ week }} 周{% if week == this_week %}<span class="tag tag-now" style="margin-left:8px">本周</span>{% endif %}</strong>
+  <a href="/me?week={{ week + 1 }}">下一周 →</a>
+  <span class="spacer"></span>
+  <span class="hint">本周共 {{ total_courses }} 个课次 · 已请假 {{ leave_count }} 节</span>
+</div>
+
+<div class="card" style="padding:14px 18px;margin-bottom:18px">
+  <p class="hint" style="margin:0">
+    <strong style="color:var(--text)">怎么请假：</strong>
+    请假请的是<strong style="color:var(--text)">课余时间</strong>（有线下课的格子本来就排不了班，不用请）。
+    <strong style="color:var(--text)">线上课不算占用</strong>——那个格子可以正常排班，也可以请假。
+    点空格里的「请假」，格子会标红；再点一次取消。<strong style="color:var(--text)">每周独立</strong>。
+  </p>
+</div>
+
+<!-- 桌面：网格视图 -->
+<table class="grid grid-desktop">
+  <thead>
+    <tr>
+      <th class="slot-head">节次</th>
+      {% for day in days %}<th>{{ day }}{% if dates and dates.get(day) %}<span class="dnum">{{ dates[day].day }}</span>{% endif %}</th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in grid %}
+    <tr>
+      <th class="slot">{{ row[0].slot }}</th>
+      {% for cell in row %}
+      <td class="cell{% if cell.busy %} busy{% endif %}{% if cell.online %} online{% endif %}{% if cell.on_leave %} on-leave{% endif %}">
+        {% if cell.busy %}
+          <div class="course">{{ cell.label }}</div>
+          {% if cell.rooms %}<div class="room">{{ cell.rooms }}</div>{% endif %}
+        {% else %}
+          {% if cell.online %}<div class="course online-course">{{ cell.label }}（线上）</div>{% endif %}
+          {% if cell.on_leave %}<div class="tag">已请假</div>{% endif %}
+          <form method="post" action="/me/leave" class="inline">
+            <input type="hidden" name="day" value="{{ cell.day }}">
+            <input type="hidden" name="slot" value="{{ cell.slot }}">
+            <input type="hidden" name="week" value="{{ week }}">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <button type="submit" class="leave{% if cell.on_leave %} active{% endif %}">
+              {% if cell.on_leave %}取消请假{% else %}请假{% endif %}
+            </button>
+          </form>
+        {% endif %}
+      </td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- 手机：按天堆叠 -->
+<div class="grid-mobile">
+  {% for day in days %}
+  <div class="day-card">
+    <div class="day-head"><span class="dh-week">{{ day }}{% if dates and dates.get(day) %}<span class="dnum">{{ dates[day].day }}</span>{% endif %}</span></div>
+    <div class="day-slots">
+      {% for row in grid %}
+        {% for cell in row %}
+          {% if cell.day == day %}
+          <div class="m-cell{% if cell.busy %} busy{% endif %}{% if cell.online %} online{% endif %}{% if cell.on_leave %} on-leave{% endif %}">
+            <span class="m-slot">{{ cell.slot }}</span>
+            {% if cell.busy %}
+              <div class="m-course">{{ cell.label }}</div>
+              {% if cell.rooms %}<div class="m-room">{{ cell.rooms }}</div>{% endif %}
+            {% else %}
+              {% if cell.online %}<div class="m-course online-course">{{ cell.label }}（线上）</div>{% endif %}
+              <form method="post" action="/me/leave" class="inline">
+                <input type="hidden" name="day" value="{{ cell.day }}">
+                <input type="hidden" name="slot" value="{{ cell.slot }}">
+                <input type="hidden" name="week" value="{{ week }}">
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                <button type="submit" class="leave{% if cell.on_leave %} active{% endif %}">
+                  {% if cell.on_leave %}取消请假{% else %}请假{% endif %}
+                </button>
+              </form>
+            {% endif %}
+          </div>
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2 class="card-title">课表同步</h2>
+  <p class="hint">课表是登录时从教务系统抓来的（系统只保存教务会话凭证，不保存密码）。教务上改了课就再点一次：</p>
+  <form method="post" action="/me/refresh" class="row">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button type="submit">解析课表</button>
+  </form>
+</div>
+{% endblock %}

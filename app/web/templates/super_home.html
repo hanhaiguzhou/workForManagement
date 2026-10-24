@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}用户管理 · 课表排班{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<h1>用户管理</h1>
+<p class="hint">超级管理员视图</p>
+{% if message %}<div class="notice">{{ message }}</div>{% endif %}
+
+<div class="stat-row">
+  <div class="stat-card"><div class="num">{{ total_users }}</div><div class="lbl">全部账号</div></div>
+  <div class="stat-card"><div class="num">{{ departments_rows|length }}</div><div class="lbl">部门</div></div>
+  <div class="stat-card"><div class="num">{{ pending_admins|length }}</div><div class="lbl">待审管理员</div></div>
+</div>
+
+<div class="cta-row">
+  <a class="button-link" href="/admin">我的部门（排班 / 总览）</a>
+</div>
+
+{% if pending_admins %}
+<h2>待审的管理员申请</h2>
+<table class="list">
+  <thead><tr><th>学号</th><th>姓名</th><th>操作</th></tr></thead>
+  <tbody>
+    {% for m in pending_admins %}
+    <tr>
+      <td>{{ m.student_no }}</td>
+      <td>{{ m.name or '—' }}</td>
+      <td class="actions">
+        <form method="post" action="/admin/users/decide" class="inline">
+          <input type="hidden" name="user_id" value="{{ m.id }}">
+          <input type="hidden" name="decision" value="approve">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button type="submit">通过</button>
+        </form>
+        <form method="post" action="/admin/users/decide" class="inline">
+          <input type="hidden" name="user_id" value="{{ m.id }}">
+          <input type="hidden" name="decision" value="reject">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button type="submit" class="ghost">拒绝</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h2>部门视图</h2>
+{% if departments_rows %}
+<table class="list">
+  <thead><tr><th>管理员</th><th>学号</th><th>已通过成员</th><th>待审</th><th>最近排班</th></tr></thead>
+  <tbody>
+    {% for row in departments_rows %}
+    <tr>
+      <td>{{ row.admin.name or '—' }}</td>
+      <td class="hint">{{ row.admin.student_no }}</td>
+      <td>{{ row.member_count }} 人</td>
+      <td>{{ row.pending_count }}</td>
+      <td class="hint">{{ row.last_scheduled_at.strftime('%Y-%m-%d %H:%M') if row.last_scheduled_at else '还没排过' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="hint">还没有管理员。</p>
+{% endif %}
+
+<h2>全部账号</h2>
+<table class="list">
+  <thead>
+    <tr><th class="hide-sm">学号</th><th>姓名</th><th>角色</th><th>状态</th><th class="hide-sm">所属管理员</th><th>操作</th></tr>
+  </thead>
+  <tbody>
+    {% for u in everyone %}
+    <tr{% if u.is_disabled %} class="disabled-row"{% endif %}>
+      <td class="hide-sm">{{ u.student_no }}</td>
+      <td>{{ u.name or '—' }}</td>
+      <td>{{ {'user': '学生', 'admin': '管理员', 'super_admin': '超级管理员', 'teacher': '老师'}.get(u.role, u.role) }}</td>
+      <td>
+        {{ {'pending': '待审', 'approved': '已通过', 'rejected': '已拒绝'}.get(u.status, u.status) }}
+        {% if u.is_disabled %}<span class="tag tag-muted">已停用</span>{% endif %}
+      </td>
+      <td class="hide-sm">
+        {% if u.owner_admin_id %}
+          {% for a in admins %}{% if a.id == u.owner_admin_id %}{{ a.name or a.student_no }}{% endif %}{% endfor %}
+        {% else %}—{% endif %}
+      </td>
+      <td class="actions">
+        {% if u.role == 'teacher' %}
+        {# 老师账号是交接保险丝：不可停用、不可改归属，只能降级或改部署配置 #}
+        {% if u.id == current_user.id %}
+        <span class="hint">自己（老师）</span>
+        {% else %}
+        <form method="post" action="/admin/users/role" class="inline">
+          <input type="hidden" name="user_id" value="{{ u.id }}">
+          <input type="hidden" name="role" value="user">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button type="submit" class="ghost">取消老师</button>
+        </form>
+        {% endif %}
+        {% elif u.role != 'super_admin' %}
+        <form method="post" action="/admin/users/disable" class="inline">
+          <input type="hidden" name="user_id" value="{{ u.id }}">
+          <input type="hidden" name="disabled" value="{{ '0' if u.is_disabled else '1' }}">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button type="submit" class="ghost">{{ '恢复' if u.is_disabled else '停用' }}</button>
+        </form>
+
+        {% if u.role != 'teacher' %}
+        <form method="post" action="/admin/users/role" class="inline">
+          <input type="hidden" name="user_id" value="{{ u.id }}">
+          <input type="hidden" name="role" value="{{ 'user' if u.role == 'admin' else 'admin' }}">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button type="submit" class="ghost">
+            {{ '降为普通用户' if u.role == 'admin' else '设为管理员' }}
+          </button>
+        </form>
+        {% endif %}
+
+        <form method="post" action="/admin/users/role" class="inline">
+          <input type="hidden" name="user_id" value="{{ u.id }}">
+          <input type="hidden" name="role" value="teacher">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button type="submit" class="ghost">设为老师</button>
+        </form>
+
+        {% if u.role == 'user' and admins %}
+        <form method="post" action="/admin/users/reassign" class="inline">
+          <input type="hidden" name="user_id" value="{{ u.id }}">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <select name="admin_id">
+            {% for a in admins %}
+            <option value="{{ a.id }}" {% if a.id == u.owner_admin_id %}selected{% endif %}>
+              {{ a.name or a.student_no }}
+            </option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="ghost">改部门</button>
+        </form>
+        {% endif %}
+        {% else %}
+        <span class="hint">—</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

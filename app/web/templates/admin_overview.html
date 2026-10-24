@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}全员总览 · 第{{ week }}周{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<h1>全员总览 · 第 {{ week }} 周</h1>
+<p class="hint">本部门 {{ member_count }} 人 · {{ semester }} · 格子里是「谁有空」</p>
+{% if message %}<div class="notice">{{ message }}</div>{% endif %}
+
+<div class="weekbar">
+  {% if week > 1 %}<a href="/admin/overview?week={{ week - 1 }}">← 上一周</a>{% else %}<span class="disabled">← 上一周</span>{% endif %}
+  <strong>第 {{ week }} 周{% if week == this_week %}<span class="tag tag-now" style="margin-left:8px">本周</span>{% endif %}</strong>
+  <a href="/admin/overview?week={{ week + 1 }}">下一周 →</a>
+  <span class="spacer"></span>
+  <a class="button-link" href="/admin/schedule?week={{ week }}">去排班 →</a>
+</div>
+
+<table class="grid overview">
+  <thead>
+    <tr><th class="slot-head">节次</th>{% for day in days %}<th>{{ day }}</th>{% endfor %}</tr>
+  </thead>
+  <tbody>
+    {% for line in grid %}
+    <tr>
+      <th class="slot">{{ line[0].slot }}</th>
+      {% for cell in line %}
+      <td class="cell{% if cell.free %} has-free{% endif %}{% if cell.duty %} has-duty{% endif %}">
+        {% if cell.duty %}<div class="duty">值班：{{ cell.duty }}</div>{% endif %}
+        {% if cell.free %}<div class="free">{{ cell.free|join('、') }}</div>{% endif %}
+        {% if cell.courses %}
+        <div class="busy-list"><span class="muted-label">有课：</span>{{ cell.courses|join('、') }}</div>
+        {% endif %}
+        {% if cell.on_leave %}
+        <div class="leave-list"><span class="muted-label">请假：</span>{{ cell.on_leave|join('、') }}</div>
+        {% endif %}
+      </td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>每人本周占用</h2>
+<table class="list">
+  <thead><tr><th>姓名</th><th>学号</th><th>有课</th><th>请假</th><th>值班</th><th class="hide-sm">周内空档</th></tr></thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      <td>{{ row.member.name or '—' }}</td>
+      <td class="hint">{{ row.member.student_no }}</td>
+      <td>{{ row.courses|length }} 节</td>
+      <td>{{ row.leave|length }} 节</td>
+      <td>{{ row.duty|length }} 次</td>
+      <td class="hide-sm">{{ row.free|length }} 节</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,11 @@
+# 先在容器里让 pip 求兼容解，装成功后用容器内 pip freeze 的结果覆盖本文件锁定版本。
+# 注意：本地 .venv 的 pydantic 2.14.1 是本机定制版，PyPI 上没有，不能直接锁。
+fastapi
+uvicorn
+jinja2
+python-multipart
+SQLAlchemy>=2.0
+requests
+beautifulsoup4
+openpyxl
+chinesecalendar

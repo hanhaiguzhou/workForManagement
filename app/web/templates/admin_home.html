@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}管理员台 · 课表排班{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<h1>管理员台</h1>
+<p class="hint">
+  {% if current_user.role == 'super_admin' %}超级管理员视角：你名下部门的成员{% elif current_user.role == 'teacher' %}老师视角：你代管部门（超管名下）的成员{% else %}这里只显示你部门的成员{% endif %}
+</p>
+{% if message %}<div class="notice">{{ message }}</div>{% endif %}
+
+<div class="stat-row">
+  <div class="stat-card">
+    <div class="num">{{ approved|length }}</div>
+    <div class="lbl">已通过成员</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ pending|length }}</div>
+    <div class="lbl">待审申请</div>
+  </div>
+</div>
+
+<div class="cta-row">
+  <a class="button-link cta" href="/admin/overview">全员总览（谁有空）</a>
+  <a class="button-link cta download" href="/admin/schedule">一键排班 + 下载 Excel</a>
+</div>
+<p class="hint">总览看的是「线下课 ∪ 请假」（线上课不算占用），排班只往有空的格子里放人。</p>
+
+{% if pending %}
+<h2>待审申请</h2>
+<table class="list">
+  <thead><tr><th>学号</th><th>姓名</th><th>申请时间</th><th>操作</th></tr></thead>
+  <tbody>
+    {% for m in pending %}
+    <tr>
+      <td>{{ m.student_no }}</td>
+      <td>{{ m.name or '—' }}</td>
+      <td class="hint">{{ m.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+      <td class="actions">
+        <form method="post" action="/admin/decide" class="inline">
+          <input type="hidden" name="user_id" value="{{ m.id }}">
+          <input type="hidden" name="decision" value="approve">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button type="submit">通过</button>
+        </form>
+        <form method="post" action="/admin/decide" class="inline">
+          <input type="hidden" name="user_id" value="{{ m.id }}">
+          <input type="hidden" name="decision" value="reject">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button type="submit" class="ghost">拒绝</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h2>已通过成员</h2>
+{% if approved %}
+<table class="list">
+  <thead><tr><th>学号</th><th>姓名</th><th>通过时间</th></tr></thead>
+  <tbody>
+    {% for m in approved %}
+    <tr>
+      <td>{{ m.student_no }}</td>
+      <td>{{ m.name or '—' }}</td>
+      <td class="hint">{{ m.approved_at.strftime('%Y-%m-%d %H:%M') if m.approved_at else '—' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="hint">还没有通过的成员。</p>
+{% endif %}
+{% endblock %}

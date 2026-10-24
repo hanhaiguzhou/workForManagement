@@ -1,0 +1,12 @@
+# 数据目录挂载宿主机卷，不能打进镜像（否则更新一次镜像就把现场数据覆盖了）
+data/
+# 缓存与本地杂项
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+.gitignore
+.venv/
+# 明文教务密码文件，绝不上传、绝不进镜像
+users.txt
+users.txt.example

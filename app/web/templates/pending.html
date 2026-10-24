@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{% if choosing %}选择管理员{% else %}等待审批{% endif %} · 课表排班{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card{% if choosing %} auth-card-wide{% endif %}">
+    {% if current_user.status == 'rejected' %}
+      <h1>申请被拒绝</h1>
+      <div class="alert">你的申请被拒绝了。如果有疑问，请联系管理员。</div>
+      <ul class="facts">
+        <li>学号：{{ current_user.student_no }}</li>
+        <li>姓名：{{ current_user.name or '—' }}</li>
+      </ul>
+
+    {% elif choosing %}
+      <h1>选择管理员</h1>
+      <p class="sub">已用教务账号登录成功。请选择你要加入的部门，由该管理员审批。</p>
+      {% if error %}<div class="alert">{{ error }}</div>{% endif %}
+
+      <ul class="facts">
+        <li>学号：{{ current_user.student_no }}</li>
+        <li>姓名：{{ current_user.name or '—' }}</li>
+      </ul>
+
+      {% if choices %}
+      <div class="admin-picker">
+        {% for m in choices %}
+        <form method="post" action="/pending/choose" class="admin-choice">
+          <input type="hidden" name="csrf" value="{{ csrf or '' }}">
+          <input type="hidden" name="admin_id" value="{{ m.id }}">
+          <button type="submit">
+            <span class="ac-name">{{ m.name or m.student_no }}</span>
+            <span class="ac-meta">
+              {{ '超级管理员' if m.is_super_admin else '部门管理员' }} · {{ m.student_no }}
+            </span>
+          </button>
+        </form>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="alert">目前还没有已通过审批的管理员，暂时无法提交申请。请联系超级管理员。</div>
+      {% endif %}
+
+      <details class="advanced" style="margin-top:18px">
+        <summary>我不是来加入部门的，我要申请当管理员</summary>
+        <p class="hint">
+          点了之后不再绑定任何部门，而是作为「部门管理员申请」交给超级管理员审批。
+          通过后你会拥有自己的部门，可以审批成员、一键排班。
+        </p>
+        <form method="post" action="/pending/become-admin">
+          <input type="hidden" name="csrf" value="{{ csrf or '' }}">
+          <button type="submit" class="ghost" style="width:100%">申请成为部门管理员</button>
+        </form>
+      </details>
+
+    {% else %}
+      <h1>等待审批</h1>
+      <p class="sub">你的申请已经提交，正在等待审批</p>
+      <ul class="facts">
+        <li>学号：{{ current_user.student_no }}</li>
+        <li>姓名：{{ current_user.name or '—' }}</li>
+        <li>审批人：{{ approver.name if approver else '超级管理员' }}</li>
+      </ul>
+      <p class="hint">通过之后，重新打开这个页面就能看到自己的课表。</p>
+      <form method="post" action="/pending/become-admin" style="margin-bottom:10px"
+            onsubmit="return confirm('改成申请当部门管理员？会取消当前的部门申请。')">
+        <input type="hidden" name="csrf" value="{{ csrf or '' }}">
+        <button type="submit" class="ghost" style="width:100%">改成申请成为部门管理员</button>
+      </form>
+    {% endif %}
+
+    <form method="post" action="/logout">
+      <button type="submit" class="ghost" style="width:100%">退出登录</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

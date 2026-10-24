@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+data/
+*.db
+*.log
+.venv/
+backups/
+backup-*/
+users.txt

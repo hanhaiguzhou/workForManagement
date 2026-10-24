@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="{{ theme or 'dark' }}" data-theme-switch-in="{{ theme_switch_in or 0 }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf or '' }}">
+  <title>{% block title %}课表排班{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css?v=2.14">
+</head>
+<body>
+  {% if current_user %}
+  <header class="topbar">
+    <a class="brand" href="/">勤工助学排班</a>
+    <nav>
+      {% if current_user.role in ('super_admin', 'teacher') %}<a href="/admin/users">用户管理</a>{% endif %}
+      {% if current_user.role in ('admin', 'super_admin', 'teacher') %}<a href="/admin">管理员台</a>
+      <a href="/admin/overview">全员总览</a><a href="/admin/schedule">一键排班</a>{% endif %}
+      <a href="/me">我的课表</a>
+      <button type="button" class="theme-toggle" id="themeToggle" title="按北京时间自动切换（8:00–17:00 亮色），点击可临时改" aria-label="切换主题">🌙</button>
+      <span class="who">{{ current_user.name or current_user.student_no }}</span>
+      <form method="post" action="/logout" class="inline"><button type="submit" class="link">退出</button></form>
+    </nav>
+  </header>
+  {% endif %}
+  <main class="{% block main_class %}narrow{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+  <script src="/static/ui.js?v=2.15"></script>
+</body>
+</html>

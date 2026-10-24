@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}一键排班 · 第{{ week }}周{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<h1>一键排班 · 第 {{ week }} 周</h1>
+<p class="hint">{{ semester }} · 只排本部门（{{ members|length }} 人）· 周六和每天 11-12 节只排常驻人员 · 不排周日 · 教室为「线上」的课不算占用</p>
+{% if message %}<div class="notice">{{ message }}</div>{% endif %}
+
+<div class="weekbar">
+  <a href="/admin/schedule?week={{ week - 1 }}">← 上一周</a>
+  <strong>第 {{ week }} 周{% if week == this_week %}<span class="tag tag-accent">本周</span>{% endif %}</strong>
+  <a href="/admin/schedule?week={{ week + 1 }}">下一周 →</a>
+</div>
+
+<div class="week-note">
+  <div class="week-note-main">
+    <span class="week-note-label">本周日期</span>
+    <span class="week-note-value">{{ calendar.label }}</span>
+  </div>
+  {% if calendar.holidays %}
+  <div class="week-note-holidays">
+    <span class="week-note-label">已自动跳过</span>
+    {% for h in calendar.holidays %}
+    <span class="holiday-chip">{{ h.day }} {{ h.date.strftime('%m-%d') }} {{ h.name }}</span>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="week-note-holidays">
+    <span class="week-note-label">节假日</span>
+    <span class="hint">本周没有法定节假日，全部班次正常可排</span>
+  </div>
+  {% endif %}
+</div>
+
+{% if validation %}
+<div class="alert">
+  <strong>排出来的结果没通过自检，没有生成文件。</strong>
+  <p class="hint">这说明排班器有 bug，请把下面的内容发给维护者。</p>
+  <ul class="facts">
+    {% for problem in validation %}<li>{{ problem }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if error %}
+<div class="alert">
+  <strong>这一周排不出来。</strong>
+  {% if error.hint %}<div class="hint">{{ error.hint }}</div>{% endif %}
+  <ul class="facts">
+    {% for reason in error.reasons %}<li>{{ reason }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="two-col">
+  <div class="card param-card">
+    <h2 class="card-title">排班参数</h2>
+    <div class="param-summary">
+      <div><span>可排人员</span><strong>{{ members|length }} 人</strong></div>
+      <div><span>本周已排</span><strong>{{ assignments|length }} 班次</strong></div>
+      <div><span>本周日期</span><strong>{{ calendar.label }}</strong></div>
+    </div>
+    <form method="post" action="/admin/schedule/run" class="stack" id="scheduleForm">
+      <input type="hidden" name="csrf" value="{{ csrf or '' }}">
+      <input type="hidden" name="week" value="{{ week }}">
+
+      <label>每人恰好排几班
+        <input name="max_per_person" type="number" min="0" max="20"
+               value="{{ settings_row.max_per_person }}">
+      </label>
+
+      <label>常驻岗位（周六 + 每天 11-12 节固定人员）
+        <select name="special_person_id">
+          <option value="">（不指定）</option>
+          {% for m in members %}
+          <option value="{{ m.id }}" {% if settings_row.special_person_id == m.id %}selected{% endif %}>
+            {{ m.name or m.student_no }}
+          </option>
+          {% endfor %}
+        </select>
+      </label>
+      <p class="hint" style="margin:-6px 0 4px">
+        这个人只要没课就排班，周六和每天的 11-12 节由他独占。只想改这一项的话，用下面的「只保存设置」——不会重排本周。
+      </p>
+
+      <label>不能排 1-2 节的人（学号，逗号分隔）
+        <input name="blacklist" type="text" value="{{ settings_row.blacklist_ids or '' }}"
+               placeholder="例如 2025000002,2025000003">
+      </label>
+
+      <div class="cta-row">
+        <button type="submit" class="cta">一键排班</button>
+        <button type="submit" class="ghost" formaction="/admin/schedule/settings">只保存设置</button>
+      </div>
+    </form>
+
+    <div class="advanced" style="margin-top:14px;padding-top:12px">
+      <p class="hint" style="margin:0 0 8px">
+        <strong>周次校正</strong>（学期初用）：学校实际是第几周就填几，
+        保存后<strong>全站所有人立即生效</strong>（含学生的"我的课表"），自然周与日期不变、只平移编号。
+        {% if week_anchor_week %}当前校正：{{ week_anchor_monday }} 那周 = 第 {{ week_anchor_week }} 周。{% endif %}
+      </p>
+      <form method="post" action="/admin/schedule/week-calibrate" class="cta-row" style="margin:0">
+        <input type="hidden" name="csrf" value="{{ csrf or '' }}">
+        <input type="number" name="week" min="1" max="{{ week_max }}" placeholder="本周是第几周"
+               style="width:160px;margin:0">
+        <button type="submit" class="ghost">校正本周周次</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-stack">
+    {% if assignments %}
+    <div class="card result-card">
+      <h2 class="card-title">本周已排 {{ assignments|length }} 个班次</h2>
+      <div class="cta-row" style="margin-top:0">
+        <a class="button-link cta download" href="/admin/schedule/download?week={{ week }}">下载值班表 Excel</a>
+        <span class="hint" style="align-self:center">填好姓名的模板，直接交上去</span>
+      </div>
+      <table class="list compact" data-page-size="7">
+        <thead><tr><th>星期</th><th>节次</th><th>值班人</th></tr></thead>
+        <tbody>
+          {% for item in assignments %}
+          <tr><td>{{ item.day }}</td><td>{{ item.slot }}</td><td>{{ item.name }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card"><p class="hint" style="margin:0">这一周还没有排班。左边填好参数点「一键排班」。</p></div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="cta-row" style="margin-top:0;margin-bottom:6px;align-items:baseline">
+    <h2 class="card-title" style="margin:0">总体导出 · {{ cycle_label }}（{{ cycle_range_label }}）</h2>
+    <span class="spacer"></span>
+    <a class="button-link ghost" href="/admin/schedule/download?week={{ week }}"
+       style="min-height:30px;padding:5px 14px;font-size:12.5px">⬇ 本周一键下载</a>
+  </div>
+  <p class="hint" style="margin-top:0">
+    每次一键排班自动存档该周 Excel，同一周重排只保留最新版。
+    周期为每月 25 日到次月 25 日，25 号及之后的排班归次月。
+    <a href="/admin/schedule?week={{ week }}&amp;cycle={{ prev_cycle_iso }}">‹ 上个周期</a>
+    {% if next_cycle_iso %}<a href="/admin/schedule?week={{ week }}&amp;cycle={{ next_cycle_iso }}">下个周期 ›</a>{% endif %}
+  </p>
+  {% if archives_list %}
+  <table class="list compact archives-table">
+    <thead><tr><th>文件名</th><th>排班时间</th><th class="hide-sm">说明</th><th>操作</th></tr></thead>
+    <tbody>
+      {% for a in archives_list %}
+      <tr>
+        <td class="arc-name">{{ a.filename }}</td>
+        <td class="hint">{{ a.when }}</td>
+        <td class="hint hide-sm">第 {{ a.week }} 周 · 排班时点的快照</td>
+        <td class="actions">
+          <a class="button-link ghost" href="/admin/schedule/archives/{{ a.id }}/download"
+             style="min-height:30px;padding:5px 14px;font-size:12.5px">⬇ 下载</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="hint" style="margin:0">本周期还没有存档：排好一周就会自动出现在这里。</p>
+  {% endif %}
+
+  {% if history_cycles %}
+  <h2 class="card-title" style="margin:18px 0 8px">历史周期（{{ history_cycles|length }} 个）</h2>
+  {% for c in history_cycles %}
+  <details class="advanced" style="margin-top:8px">
+    <summary>
+      <strong>{{ c.label }}</strong>
+      <span class="hint">（{{ c.range_label }}）· {{ c['items']|length }} 份 · 点开展开文件列表</span>
+    </summary>
+    <div class="cta-row" style="margin:10px 0;align-items:center">
+      <span class="hint">单独下载用列表里的按钮；或整周期打包：</span>
+      <a class="button-link ghost" href="/admin/schedule/archives/zip?cycle={{ c.start_iso }}"
+         style="min-height:30px;padding:5px 14px;font-size:12.5px">⬇ 下载本周期 zip</a>
+    </div>
+    <table class="list compact archives-table">
+      <thead><tr><th>文件名</th><th>排班时间</th><th>操作</th></tr></thead>
+      <tbody>
+        {% for a in c['items'] %}
+        <tr>
+          <td class="arc-name">{{ a.filename }}</td>
+          <td class="hint">{{ a.when }}</td>
+          <td class="actions">
+            <a class="button-link ghost" href="/admin/schedule/archives/{{ a.id }}/download"
+               style="min-height:30px;padding:5px 14px;font-size:12.5px">⬇ 下载</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+  {% endfor %}
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2 class="card-title">值班表模板</h2>
+  <p class="hint" style="margin-top:0">
+    当前模板：<strong>{{ template_name }}</strong>
+    {% if template_is_custom %}<span class="tag tag-accent">自定义</span>{% endif %}
+    · 识别到 {{ template_cells }} 个可填格
+    · <a class="button-link ghost" href="/admin/schedule/template/download"
+         style="min-height:30px;padding:5px 14px;font-size:12.5px">⬇ 下载当前模板</a>
+  </p>
+  {% if template_error %}
+  <div class="alert" style="margin-top:0">
+    <strong>模板有问题，导出会失败。</strong>
+    <div class="hint">{{ template_error }}</div>
+  </div>
+  {% endif %}
+
+  <div class="advanced">
+    <p class="hint" style="margin:0 0 10px">
+      <strong>换了新的 Excel 文件？</strong>
+      只有<strong>排版结构</strong>变了（节次行、星期列、A2 标记位置）才需要传新文件。
+      只是改标题、地点、老师这些文字的话，点上面「⬇ 下载当前模板」在 Excel 里改好，再从这里上传。
+      新模板必须仍然有 {{ required_cells or 36 }} 个写着「A2」的可填格（周一~周六）。
+      周日格不是必需的——周日不排班，模板里没有周日列也能用。
+    </p>
+    <form method="post" action="/admin/schedule/template/upload" enctype="multipart/form-data" class="cta-row">
+      <input type="hidden" name="csrf" value="{{ csrf or '' }}">
+      <input type="file" name="file" accept=".xlsx" required>
+      <button type="submit" class="cta">上传并校验</button>
+      {% if template_is_custom %}
+      <button type="submit" formaction="/admin/schedule/template/use-default" class="ghost">改回默认模板</button>
+      {% endif %}
+      <a class="button-link ghost" href="/admin/schedule/template/download-default">⬇ 下载原始模板</a>
+    </form>
+  </div>
+</div>
+{% endblock %}
