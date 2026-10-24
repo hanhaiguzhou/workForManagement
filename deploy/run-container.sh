@@ -33,7 +33,8 @@ docker run -d --name duty-scheduler \
   -p 8000:8000 \
   -v /opt/duty-scheduler/app:/app/app \
   -v /opt/duty-scheduler/data:/app/data \
-  -v /opt/duty-scheduler/template.xlsx:/app/template.xlsx:ro \
+  # 值班表模板不随仓库分发：把你的模板 Excel 放到宿主机后，取消下一行注释
+  # -v /opt/duty-scheduler/template.xlsx:/app/template.xlsx:ro \
   -v /usr/share/zoneinfo:/usr/share/zoneinfo:ro \
   -e TZ=Asia/Shanghai \
   -e APP_DB_PATH=/app/data/app.db \

@@ -54,6 +54,8 @@ def _parse_teacher_accounts(raw: str) -> dict[str, dict[str, str]]:
 @dataclass
 class Settings:
     db_path: Path = BASE_DIR / "data" / "app.db"
+    # 值班表 Excel 模板不随仓库分发（含单位真实信息的表格不公开）。
+    # 用 SCHEDULE_TEMPLATE 指向你自己的模板；模板约定（A2 标记/行列结构）见 app/xlsx.py。
     template_path: Path = BASE_DIR / "勤工助学值班表 20XX-20XX -X第X周.xlsx"
     templates_dir: Path = BASE_DIR / "app" / "web" / "templates"
     static_dir: Path = BASE_DIR / "app" / "web" / "static"

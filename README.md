@@ -36,7 +36,7 @@ pip install -r requirements-web.txt
 export APP_DB_PATH=./data/app.db
 export APP_SEMESTER=2026-2027-1
 export APP_SEMESTER_START=2026-09-07
-export SCHEDULE_TEMPLATE=./template.xlsx
+export SCHEDULE_TEMPLATE=./your-duty-roster.xlsx   # 模板不随仓库分发：自备值班表 Excel（约定见 app/xlsx.py）
 
 python run.py   # http://127.0.0.1:8000
 ```

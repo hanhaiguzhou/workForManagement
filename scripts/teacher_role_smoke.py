@@ -56,6 +56,8 @@ settings = Settings(
     semester="2026-2027-1",
     semester_start=date(2026, 9, 7),
     # 默认模板缺周六11-12 格，用部门上传过的完整模板跑排班
+    # 冒烟需要一个值班表模板：容器里挂载你自己的 Excel（约定见 app/xlsx.py），
+    # 仓库不附带模板文件。
     template_path=Path("/app/template.xlsx"),
 )
 

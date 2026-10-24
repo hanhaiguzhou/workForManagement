@@ -792,6 +792,17 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
         this_week = timetable_service.current_week(
             settings, db, semester_start=_semester_start_for(db, admin, settings))
         view_week = _clamp_week(week, this_week)
+        # 模板不随仓库分发：缺模板时给明确提示，而不是让排班/导出裸 500
+        if not scheduling.department_template(db, admin, settings).exists():
+            return _render(
+                request, "admin_schedule.html", user,
+                **_schedule_context(db, admin, view_week, this_week, settings,
+                                    settings.max_per_person,
+                                    message="缺少值班表模板：把你的值班表 Excel 放到 "
+                                            "SCHEDULE_TEMPLATE 指向的位置"
+                                            "（模板约定见 app/xlsx.py），刷新即可。"),
+                csrf=_csrf_token(db, request),
+            )
         cycle_start = None
         if cycle:
             try:
@@ -851,7 +862,14 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
         user = _require_department_admin(db, request)
         admin = _acting_admin(db, user)
         _require_csrf(db, request, csrf)
-        view_week = max(1, min(30, week))
+        view_week = _clamp_week(week, this_week)
+        if not scheduling.department_template(db, admin, settings).exists():
+            return RedirectResponse(
+                f"/admin/schedule?week={view_week}"
+                "&msg=缺少值班表模板，无法排班（把你的值班表 Excel 放到 "
+                "SCHEDULE_TEMPLATE 指向的位置，约定见 app/xlsx.py）",
+                status_code=303,
+            )
         # 学期起始日期不在这里改：它是学期常量，由 APP_SEMESTER_START 统一配置，
         # 表单里只读展示「第 N 周 = 几月几号」，避免和全局配置口径分裂。
         scheduling.update_settings(
@@ -915,6 +933,8 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
         user = _require_department_admin(db, request)
         admin = _acting_admin(db, user)
         view_week = max(1, min(30, week))
+        if not scheduling.department_template(db, admin, settings).exists():
+            raise HTTPException(status_code=404, detail="缺少值班表模板，无法导出")
         names = scheduling.plan_names(db, admin, settings.semester, view_week)
         if not names:
             raise HTTPException(status_code=404, detail="这一周还没有排班，先一键排班")

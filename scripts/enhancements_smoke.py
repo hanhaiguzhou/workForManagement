@@ -50,6 +50,8 @@ settings = Settings(
     teacher_accounts={TEACHER_NO: {"password": TEACHER_PW, "name": "演示老师"}},
     semester="2026-2027-1",
     semester_start=date(2026, 9, 7),
+    # 冒烟需要一个值班表模板：容器里挂载你自己的 Excel（约定见 app/xlsx.py），
+    # 仓库不附带模板文件。
     template_path=Path("/app/template.xlsx"),
 )
 
