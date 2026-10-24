@@ -67,7 +67,7 @@ class Settings:
     session_days: int = 30
     secure_cookie: bool = False
 
-    # 教务适配器：real 打真实教务系统（默认）；stub 只给自动化测试用
+    # 教务适配器：real 打强智教务系统（默认）；stub 只给自动化测试用
     jiaowu_mode: str = "real"
     # 第一个用此学号注册的人自动成为超级管理员（留空则没有超管入口）
     super_admin_student_no: str | None = None

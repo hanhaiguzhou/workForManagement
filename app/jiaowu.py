@@ -1,4 +1,4 @@
-"""学校教务适配器：登录、抓课表、解析。
+"""强智科技教务系统适配器：登录、抓课表、解析。
 
 与旧脚本的关键差异：
 
@@ -105,7 +105,7 @@ class LoginBundle:
 
 
 class IdentityVerifier(Protocol):
-    """身份验证缝：能不能登上教务系统，就是身份凭证。"""
+    """身份验证缝：能不能登上强智教务系统，就是身份凭证。"""
 
     def verify(self, student_no: str, password: str) -> VerifyResult: ...
 
